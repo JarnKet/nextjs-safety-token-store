@@ -325,3 +325,5 @@ This project is for educational purposes. Feel free to use it as a learning reso
 ---
 
 **🎓 Perfect for learning:** Frontend security, authentication flows, Next.js best practices, and secure token management without external dependencies.
+
+<https://gemini.google.com/gem/coding-partner/f0ac03ccad8fb8e2>
