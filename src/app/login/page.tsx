@@ -1,120 +1,90 @@
 // File: app/login/page.tsx
-"use client"; // ระบุว่าเป็น Client Component
+'use client'
 
-import { useState, FormEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useLogin } from '@/hooks/auth-hooks'
+import { loginSchema, type LoginFormData } from '@/lib/schemas'
 
 export default function LoginPage() {
-    const [username, setUsername] = useState("emilys"); // pre-fill for testing
-    const [password, setPassword] = useState("emilyspass"); // pre-fill for testing
-    const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const { login } = useAuth();
-
-    const handleSubmit = async (event: FormEvent) => {
-        event.preventDefault();
-        setError(null);
-        setIsLoading(true);
-
-        try {
-            // Input validation
-            if (!username.trim() || !password) {
-                setError("Username and password are required");
-                return;
-            }
-
-            // ส่ง request ไปที่ API Route ของเราเอง (ไม่ใช่ dummyjson.com)
-            const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                    username: username.trim(),
-                    password,
-                }),
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                // Update auth context with user data
-                if (data.user) {
-                    login(data.user);
-                }
-
-                // Redirect to return URL or dashboard
-                const returnTo = searchParams.get("returnTo") || "/dashboard";
-                router.push(returnTo);
-            } else {
-                setError(data.message || "Failed to login");
-            }
-        } catch (error) {
-            console.error("Login error:", error);
-            setError("An unexpected error occurred. Please try again.");
-        } finally {
-            setIsLoading(false);
+    const login = useLogin()
+    
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting }
+    } = useForm<LoginFormData>({
+        resolver: zodResolver(loginSchema),
+        defaultValues: {
+            username: 'emilys',
+            password: 'emilyspass'
         }
-    };
+    })
+
+    const onSubmit = (data: LoginFormData) => {
+        login.mutate(data)
+    }
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <form
-                onSubmit={handleSubmit}
+                onSubmit={handleSubmit(onSubmit)}
                 className="p-8 bg-white rounded-lg shadow-md w-full max-w-sm"
             >
                 <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
-                {error && (
+                
+                {/* Global Error */}
+                {login.error && (
                     <div className="mb-4 p-3 text-red-700 bg-red-100 border border-red-300 rounded-md text-center">
-                        {error}
+                        {login.error.message}
                     </div>
                 )}
+
+                {/* Username Field */}
                 <div className="mb-4">
-                    <label
-                        htmlFor="username"
-                        className="block mb-2 text-sm font-medium text-gray-700"
-                    >
+                    <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-700">
                         Username
                     </label>
                     <input
-                        id="username"
+                        {...register('username')}
                         type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                        required
-                        disabled={isLoading}
+                        id="username"
+                        disabled={isSubmitting || login.isPending}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black disabled:opacity-50"
                         autoComplete="username"
                     />
+                    {errors.username && (
+                        <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
+                    )}
                 </div>
+
+                {/* Password Field */}
                 <div className="mb-6">
-                    <label
-                        htmlFor="password"
-                        className="block mb-2 text-sm font-medium text-gray-700"
-                    >
+                    <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700">
                         Password
                     </label>
                     <input
-                        id="password"
+                        {...register('password')}
                         type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                        required
-                        disabled={isLoading}
+                        id="password"
+                        disabled={isSubmitting || login.isPending}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black disabled:opacity-50"
                         autoComplete="current-password"
                     />
+                    {errors.password && (
+                        <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                    )}
                 </div>
+
+                {/* Submit Button */}
                 <button
                     type="submit"
-                    disabled={isLoading}
-                    className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isSubmitting || login.isPending}
+                    className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                    {isLoading ? "Logging in..." : "Login"}
+                    {login.isPending ? 'Logging in...' : 'Login'}
                 </button>
             </form>
         </div>
-    );
+    )
 }
